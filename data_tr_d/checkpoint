@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/jeremie/PycharmProjects/NER/data_tr_d/model.ckpt"
+all_model_checkpoint_paths: "/home/jeremie/PycharmProjects/NER/data_tr_d/model.ckpt"

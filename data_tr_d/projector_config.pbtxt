@@ -1,0 +1,4 @@
+embeddings {
+  tensor_name: "embedding/word_embedding:0"
+  metadata_path: "/home/jeremie/PycharmProjects/NER/data_tr_d/metadata.tsv"
+}
