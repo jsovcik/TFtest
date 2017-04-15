@@ -102,8 +102,8 @@ def train(args):
     nerModel = Ner(sequ_length, args.n_word, args.embedding_size, args.lstm_size, args.batch_size)
     saver = tf.train.Saver(nerModel.tvars)
     with tf.Session() as sess:
-        saver.restore(sess, "/home/jeremie/PycharmProjects/NER/data_tr/model.ckpt")
-        tr_writer = tf.summary.FileWriter("/home/jeremie/PycharmProjects/NER/data_tr", sess.graph)
+        saver.restore(sess, "/path/to/NER/data_tr/model.ckpt")
+        tr_writer = tf.summary.FileWriter("/path/to/NER/data_tr", sess.graph)
         #sess.run(tf.global_variables_initializer())
         for e in range(args.epoch):
             for step in range(0, len(train_input), args.batch_size):
