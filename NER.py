@@ -29,7 +29,7 @@ class Ner():
             embedding = self.config.embeddings.add()
             embedding.tensor_name = W.name
             self.embedded_wrd = tf.nn.embedding_lookup(W, self.x)
-            embedding.metadata_path = "/home/jeremie/PycharmProjects/NER/data_tr/metadata.tsv"
+            embedding.metadata_path = "/Path/to/metadata.tsv"
             # produce a [batch_size, sequ_length, embedding_size] shaped tensor
 
         with tf.name_scope("fw_LSTM_layer"):
@@ -62,28 +62,7 @@ class Ner():
             self.transition_params = tf.Variable(tf.random_normal([n_tag, n_tag]), name="transition_matrix")
             log_likelihood, self.transition_params = tf.contrib.crf.crf_log_likelihood(
                  self.P, self.y, tf.constant(15*[sequence_lengths]), transition_params=self.transition_params)
-            # U = tf.unstack(P)
-            # viterbi, viterbi_scores = [], []
-            # for Y in U:
-            #     tmp_viterbi, tmp_viterbi_scores = tf.contrib.crf.viterbi_decode(Y, transition_params)
-            #     viterbi.append(tmp_viterbi)
-            #     viterbi_scores.append(tmp_viterbi_scores)
-            # viterbi_scores = tf.stack(viterbi_scores)
-            # tf.summary.scalar('viterbi_scores', viterbi_scores)
-            # viterbi = tf.stack(viterbi)
-
-        # with tf.name_scope("prediction"):
-        #     self.prediction = tf.nn.softmax(P)
-
-        # with tf.name_scope("accuracy"):
-        #     diff_prediction = tf.equal(viterbi, self.y)
-        #     self.accuracy = tf.cast(tf.reduce_mean(tf.cast(diff_prediction, tf.float32)), tf.float32)
-        #     tf.summary.scalar('accuracy', self.accuracy)
-
-            # diff_prediction = tf.equal(tf.argmax(self.prediction, 2), tf.cast(self.y, tf.int64))
-            # self.accuracy = tf.cast(tf.reduce_mean(tf.cast(diff_prediction, tf.float32)), tf.float32)
-            # tf.summary.scalar('accuracy', self.accuracy)
-
+           
         with tf.name_scope("train"):
             self.loss = tf.reduce_mean(-log_likelihood)
             tf.summary.scalar('loss', self.loss)
@@ -123,8 +102,8 @@ def train(args):
     nerModel = Ner(sequ_length, args.n_word, args.embedding_size, args.lstm_size, args.batch_size)
     saver = tf.train.Saver(nerModel.tvars)
     with tf.Session() as sess:
-        saver.restore(sess, "/home/jeremie/PycharmProjects/NER/data_tr/model.ckpt")
-        tr_writer = tf.summary.FileWriter("/home/jeremie/PycharmProjects/NER/data_tr", sess.graph)
+        saver.restore(sess, "/path/to/NER/data_tr/model.ckpt")
+        tr_writer = tf.summary.FileWriter("/path/to/NER/data_tr", sess.graph)
         #sess.run(tf.global_variables_initializer())
         for e in range(args.epoch):
             for step in range(0, len(train_input), args.batch_size):
@@ -138,7 +117,7 @@ def train(args):
                                                 nerModel.y: train_output[step:step + (args.batch_size)]})
                         tr_writer.add_summary(m_summary, step)
 
-                        saver.save(sess, "/home/jeremie/PycharmProjects/NER/data_tr/model.ckpt")
+                        saver.save(sess, "/path/to/NER/data_tr/model.ckpt")
 
                         P = sess.run(nerModel.P, feed_dict=
                             {nerModel.x : train_input[:args.batch_size],
@@ -149,8 +128,6 @@ def train(args):
                             tmp_viterbi, tmp_viterbi_scores = tf.contrib.crf.viterbi_decode(np.asarray(Y), np.asarray(transition_matrix))
                             viterbi.append(tmp_viterbi)
                             viterbi_scores.append(tmp_viterbi_scores)
-                        #tf.summary.scalar('viterbi_scores', viterbi_scores)
-
                         acc = acc_fn(viterbi, train_output[step:step + (args.batch_size)])
                         print(acc)
 
@@ -171,13 +148,13 @@ class Arg():
         for fname in filenames[1:]:
             tmp = rd.build_vocab(fname)
             self.lex = rd.lex_add(self.lex, tmp)
-        #rd.write_metadata(self.lex, "/home/jeremie/PycharmProjects/NER/data_tr/metadata.tsv")
+        rd.write_metadata(self.lex, "/path/to/data_tr/metadata.tsv")
         self.n_word = len(self.lex)+1
 
-args = Arg (["/home/jeremie/PycharmProjects/untitled/fichiertest.txt",
-             "/home/jeremie/PycharmProjects/NER/200708006_serveur_Kolab_110Bourgogne.txt"],
-             [[tg.NamedEntity(["bretagne", "telecom"], "C"), tg.NamedEntity(["alfresco", "heberge"], "P")],
-             [tg.NamedEntity(["110", "bourgogne"], "C"), tg.NamedEntity(["serveur", "kolab"], "P")]],
+args = Arg (["/path/to/doc1.txt",
+             "/path/to/doc2.txt"],
+             [[tg.NamedEntity(["client", "1"], "C"), tg.NamedEntity(["projet", "1"], "P")],
+             [tg.NamedEntity(["client", "2"], "C"), tg.NamedEntity(["projet", "2"], "P")]],
              25, 50, 15, 5)
 
 if __name__ == '__main__' :
