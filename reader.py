@@ -3,30 +3,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import tagging as tg
+
 
 import tensorflow as tf
 
-class filereader():
 
-    def __init__(self):
-
-        pass
 
 def read_words(filename):
     "return a list of the words in filename"
     with tf.gfile.GFile(filename, "r") as f:
-        return f.read().decode("utf-8").replace("\n", " ").replace("'"," ").lower().split()
+        return f.read().replace("\n", " ").replace("'"," ").lower().split()
 
 def make_sentences(s, tags):
     "divise a string list(typically a read_words output) into sentences"
     sent, sentences, sent_lengths = [], [], []
     tag, tg_sent = [], []
     cmp = 0
-    while len(s)>0:
-        sent.append(s.pop())
-        tg_sent.append(tags.pop())
+    for i in range(len(s)):
+        sent.append(s[i])
+        tg_sent.append(tags[i])
         cmp += 1
         if (cmp == 20):
             sentences.append(sent)
@@ -95,5 +91,25 @@ def getTrData(filenames, NamedEntities, lex):
         txt += _file_to_word_ids(filenames[i], lex)
     return make_sentences(txt, tags)
 
+class Arg():
+    def __init__(self, filenames, NamedEntities, embedding_size, lstm_size, batch_size, epoch):
+        self.filenames = filenames
+        self.NamedEntities = NamedEntities
+        self.embedding_size = embedding_size
+        self.lstm_size = lstm_size
+        self.batch_size = batch_size
+        self.epoch = epoch
+        self.lex = build_vocab(filenames[0])
+        for fname in filenames[1:]:
+            tmp = build_vocab(fname)
+            self.lex = lex_add(self.lex, tmp)
+        # rd.write_metadata(self.lex, "/home/jeremie/PycharmProjects/NER/data_tr/metadata.tsv")
+        self.n_word = len(self.lex) + 1
 
-# print(_clean_str(read_words("/home/jeremie/PycharmProjects/NER/Devis_Formation_Magento_ACTA.txt")))
+if __name__ == '__main__':
+    # args = Arg(["/home/jeremie/PycharmProjects/untitled/fichiertest.txt"],
+    #         [[tg.NamedEntity(["bretagne", "telecom"], "C"), tg.NamedEntity(["alfresco", "heberge"], "P")]],
+    #         25, 50, 15, 5)
+    #print (getTrData(args.filenames, args.NamedEntities, args.lex))
+    #print(read_words("/home/jeremie/PycharmProjects/untitled/fichiertest.txt"))
+    pass
