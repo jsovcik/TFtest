@@ -7,11 +7,10 @@ import reader as rd
 from tensorflow.contrib.tensorboard.plugins import projector
 
 n_tag = 9
-tag_lex = {"O":0, "B-C": 1, "B-P":2, "I-C":3, "I-P":4, "E-C":5, "E-P":6, "S-C":7, "S-P":8}
+tag_lex = {"O": 0, "B-C": 1, "B-P": 2, "I-C": 3, "I-P": 4, "E-C": 5, "E-P": 6, "S-C": 7, "S-P": 8}
 
 
 class Ner():
-
     def __init__(self, sequence_lengths, n_word,
                  embedding_size, lstm_size, batch_size):
         """buids a NER network with an embedding layer, a bidirectionnal LSTM and a CRF layer
@@ -29,7 +28,7 @@ class Ner():
             embedding = self.config.embeddings.add()
             embedding.tensor_name = W.name
             self.embedded_wrd = tf.nn.embedding_lookup(W, self.x)
-            embedding.metadata_path = "/Path/to/metadata.tsv"
+            embedding.metadata_path = "/home/jeremie/PycharmProjects/NER/data_tr/metadata.tsv"
             # produce a [batch_size, sequ_length, embedding_size] shaped tensor
 
         with tf.name_scope("fw_LSTM_layer"):
@@ -44,7 +43,6 @@ class Ner():
         biLSTMoutput, __, __ = tf.contrib.rnn.static_bidirectional_rnn(fw_cell_d, bw_cell_d, inputs,
                                                                        dtype=tf.float32)
         with tf.name_scope("linear_layer"):
-
             # Define Hidden layer weights: 2*n_hidden because of forward + backward cells
             weights = tf.Variable(tf.random_normal([n_tag, 2 * lstm_size]), name="weights")
             tf.summary.histogram("weigth", weights)
@@ -61,8 +59,8 @@ class Ner():
         with tf.name_scope("CRF_layer"):
             self.transition_params = tf.Variable(tf.random_normal([n_tag, n_tag]), name="transition_matrix")
             log_likelihood, self.transition_params = tf.contrib.crf.crf_log_likelihood(
-                 self.P, self.y, tf.constant(15*[sequence_lengths]), transition_params=self.transition_params)
-           
+                self.P, self.y, tf.constant(15 * [sequence_lengths]), transition_params=self.transition_params)
+
         with tf.name_scope("train"):
             self.loss = tf.reduce_mean(-log_likelihood)
             tf.summary.scalar('loss', self.loss)
@@ -85,15 +83,15 @@ def acc_fn(guess, real):
         m = len(guess[i])
         cmp_tot += m
         for j in range(m):
-            if (guess[i][j] == real[i][j])and(real[i][j] == 0):
+            if (guess[i][j] == real[i][j]) and (real[i][j] == 0):
                 cmp_elt += 1
-            if (real[i][j] != 0)and(guess[i][j] == real[i][j]):
+            if (real[i][j] != 0) and (guess[i][j] == real[i][j]):
                 cmp_tag += 1
             if (real[i][j] != 0):
                 cmp += 1
             if (real[i][j] == 0):
                 cmp_0 += 1
-    return (float(cmp_elt)/cmp_0, float(cmp_tag)/cmp)
+    return (float(cmp_elt) / cmp_0, float(cmp_tag) / cmp, cmp / cmp_tot)
 
 
 def train(args):
@@ -102,41 +100,107 @@ def train(args):
     nerModel = Ner(sequ_length, args.n_word, args.embedding_size, args.lstm_size, args.batch_size)
     saver = tf.train.Saver(nerModel.tvars)
     with tf.Session() as sess:
-        saver.restore(sess, "/path/to/NER/data_tr/model.ckpt")
-        tr_writer = tf.summary.FileWriter("/path/to/NER/data_tr", sess.graph)
-        #sess.run(tf.global_variables_initializer())
+        saver.restore(sess, "/home/jeremie/PycharmProjects/NER/data_tr/model.ckpt")
+        # tr_writer = tf.summary.FileWriter("/home/jeremie/PycharmProjects/NER/data_tr", sess.graph)
+        # sess.run(tf.global_variables_initializer())
         for e in range(args.epoch):
             for step in range(0, len(train_input), args.batch_size):
-                if (step+(args.batch_size) < len(train_input)):
+                if (step + (args.batch_size) < len(train_input)):
                     sess.run(nerModel.train_op, feed_dict=
-                            {nerModel.x : train_input[step:step+(args.batch_size)],
-                            nerModel.y : train_output[step:step+(args.batch_size)]})
-                    if step%12 == 0:
-                        m_summary, _ = sess.run([nerModel.merged_summaries, nerModel.train_op], feed_dict=
-                                                {nerModel.x: train_input[step:step + (args.batch_size)],
-                                                nerModel.y: train_output[step:step + (args.batch_size)]})
-                        tr_writer.add_summary(m_summary, step)
+                    {nerModel.x: train_input[step:step + (args.batch_size)],
+                     nerModel.y: train_output[step:step + (args.batch_size)]})
+                    if (step % 28 == 0):
+                        sess.run(nerModel.train_op, feed_dict=
+                        {nerModel.x: train_input[step:step + (args.batch_size)],
+                         nerModel.y: train_output[step:step + (args.batch_size)]})
+                        # tr_writer.add_summary(m_summary, step)
 
-                        saver.save(sess, "/path/to/NER/data_tr/model.ckpt")
+                        saver.save(sess, "/home/jeremie/PycharmProjects/NER/data_tr/model.ckpt")
 
                         P = sess.run(nerModel.P, feed_dict=
-                            {nerModel.x : train_input[:args.batch_size],
-                            nerModel.y : train_output[:args.batch_size]})
+                        {nerModel.x: train_input[step:step + (args.batch_size)],
+                         nerModel.y: train_output[step:step + (args.batch_size)]})
                         transition_matrix = sess.run(nerModel.transition_params)
                         viterbi, viterbi_scores = [], []
                         for Y in P:
-                            tmp_viterbi, tmp_viterbi_scores = tf.contrib.crf.viterbi_decode(np.asarray(Y), np.asarray(transition_matrix))
+                            tmp_viterbi, tmp_viterbi_scores = tf.contrib.crf.viterbi_decode(np.asarray(Y), np.asarray(
+                                transition_matrix))
                             viterbi.append(tmp_viterbi)
                             viterbi_scores.append(tmp_viterbi_scores)
+                        # tf.summary.scalar('viterbi_scores', viterbi_scores)
+
                         acc = acc_fn(viterbi, train_output[step:step + (args.batch_size)])
                         print(acc)
 
-            print("epoch = %d" %e)
-        projector.visualize_embeddings(tr_writer, nerModel.config)
+            print("epoch = %d" % e)
+            # projector.visualize_embeddings(tr_writer, nerModel.config)
+
+def max_c(viterbi, viterbi_score, vs_max, j, t):
+    if (viterbi_score > vs_max):
+        i = 0
+        while (i<len(viterbi)-1)and (viterbi[i] not in [1, 3, 5, 7]):
+            i += 1
+        if viterbi[i] in [1,3,5,7]:
+            t = 1
+            while (i+t < len(viterbi)) and (viterbi[i + t] in [1,3, 5, 7]):
+                t += 1
+            return (viterbi_score, i, True, t)
+    return vs_max, j, False, t
+
+def max_p(viterbi, viterbi_score, vs_max, j, t):
+    if (viterbi_score > vs_max):
+        i = 0
+        while (i<len(viterbi)-1)and (viterbi[i] not in [2,4,6,8]):
+            i += 1
+        if viterbi[i] in [2,4,6,8]:
+            t = 1
+            while (i+t < len(viterbi)-1) and (viterbi[i + t] in [2,4,6,8]):
+                t += 1
+            return (viterbi_score, i, True, t)
+    return vs_max, j, False, t
+
+def test(args):
+    train_input, train_output = rd.getTrData(args.filenames, args.NamedEntities, args.lex)
+    sequ_length = 20
+    nerModel = Ner(sequ_length, args.n_word, args.embedding_size, args.lstm_size, args.batch_size)
+    saver = tf.train.Saver(nerModel.tvars)
+    with tf.Session() as sess:
+        saver.restore(sess, "/home/jeremie/PycharmProjects/NER/data_tr/model.ckpt")
+        transition_matrix = sess.run(nerModel.transition_params)
+        vs_max_c, i_b_c, i_s_c, i_w_c, t_c = 0, 0, 0, 0, 0
+        vs_max_p, i_b_p, i_s_p, i_w_p, t_p = 0, 0, 0, 0, 0
+        for step in range(0, len(train_input) // args.batch_size):
+
+            P = sess.run(nerModel.P, feed_dict=
+                {nerModel.x: train_input[step * (args.batch_size):(step + 1) * (args.batch_size)],
+                 nerModel.y: train_output[step * (args.batch_size):(step + 1) * (args.batch_size)]})
+
+            for i in range(len(P)):
+                viterbi, viterbi_score = tf.contrib.crf.viterbi_decode(np.asarray(P[i]),
+                                                                        np.asarray(transition_matrix))
+                vs_max_c, i_w_c, bo_c, t_c = max_c(viterbi, viterbi_score, vs_max_c, i_w_c, t_c)
+                vs_max_p, i_w_p, bo_p,t_p = max_p(viterbi, viterbi_score, vs_max_p, i_w_p, t_p)
+                if bo_c:
+                    i_s_c = i
+                    i_b_c = step
+                if bo_p:
+                    i_s_p = i
+                    i_b_p = step
+        c = train_input[i_b_c * (args.batch_size) + i_s_c][i_w_c:i_w_c+t_c]
+        p = train_input[i_b_p * (args.batch_size) + i_s_p][i_w_p:i_w_p+t_p]
+        for key, value in args.lex.iteritems():
+            if value in c:
+                for i in range(len(c)):
+                    if c[i]==value:
+                        c[i] = key
+            if value in p:
+                for i in range(len(p)):
+                    if p[i]==value:
+                        p[i] = key
+        return(c,p)
 
 
 class Arg():
-
     def __init__(self, filenames, NamedEntities, embedding_size, lstm_size, batch_size, epoch):
         self.filenames = filenames
         self.NamedEntities = NamedEntities
@@ -148,14 +212,20 @@ class Arg():
         for fname in filenames[1:]:
             tmp = rd.build_vocab(fname)
             self.lex = rd.lex_add(self.lex, tmp)
-        rd.write_metadata(self.lex, "/path/to/data_tr/metadata.tsv")
-        self.n_word = len(self.lex)+1
+        # rd.write_metadata(self.lex, "/home/jeremie/PycharmProjects/NER/data_tr/metadata.tsv")
+        self.n_word = len(self.lex) + 1
 
-args = Arg (["/path/to/doc1.txt",
-             "/path/to/doc2.txt"],
-             [[tg.NamedEntity(["client", "1"], "C"), tg.NamedEntity(["projet", "1"], "P")],
-             [tg.NamedEntity(["client", "2"], "C"), tg.NamedEntity(["projet", "2"], "P")]],
-             25, 50, 15, 5)
 
-if __name__ == '__main__' :
-    train(args)
+tr_args = Arg(["/home/jeremie/PycharmProjects/untitled/fichiertest.txt",
+            "/home/jeremie/PycharmProjects/NER/200708006_serveur_Kolab_110Bourgogne.txt"],
+           [[tg.NamedEntity(["bretagne", "telecom"], "C"), tg.NamedEntity(["alfresco", "heberge"], "P")],
+            [tg.NamedEntity(["110", "bourgogne"], "C"), tg.NamedEntity(["serveur", "kolab"], "P")]],
+           25, 50, 15, 200)
+
+test_args = Arg(["/home/jeremie/PycharmProjects/untitled/fichiertest.txt"],
+           [[tg.NamedEntity(["bretagne", "telecom"], "C"), tg.NamedEntity(["alfresco", "heberge"], "P")]],
+           25, 50, 15, 5)
+
+if __name__ == '__main__':
+    print(test(tr_args))
+    #train(tr_args)
