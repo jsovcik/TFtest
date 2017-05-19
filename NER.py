@@ -73,6 +73,8 @@ class Ner():
 
 
 def acc_fn(guess, real):
+    # the function aims to find the proportion of interresting words (project/client)
+    # which are tagged correctly
     n = len(guess)
     cmp_elt = 0
     cmp_tag = 0
@@ -96,7 +98,7 @@ def acc_fn(guess, real):
 
 def train(args):
     train_input, train_output = rd.getTrData(args.filenames, args.NamedEntities, args.lex)
-    sequ_length = 20
+    sequ_length = 20  # the sequence lengths are meant to be defined in the preprocessing of the data
     nerModel = Ner(sequ_length, args.n_word, args.embedding_size, args.lstm_size, args.batch_size)
     saver = tf.train.Saver(nerModel.tvars)
     with tf.Session() as sess:
@@ -104,6 +106,7 @@ def train(args):
         # tr_writer = tf.summary.FileWriter("/home/jeremie/PycharmProjects/NER/data_tr", sess.graph)
         # sess.run(tf.global_variables_initializer())
         for e in range(args.epoch):
+            # TO DO: build a data-pipeline
             for step in range(0, len(train_input), args.batch_size):
                 if (step + (args.batch_size) < len(train_input)):
                     sess.run(nerModel.train_op, feed_dict=
@@ -136,6 +139,8 @@ def train(args):
             # projector.visualize_embeddings(tr_writer, nerModel.config)
 
 def max_c(viterbi, viterbi_score, vs_max, j, t):
+    # find out wich word is tagged as client with the higgest viterbi score
+    # to make a prediction
     if (viterbi_score > vs_max):
         i = 0
         while (i<len(viterbi)-1)and (viterbi[i] not in [1, 3, 5, 7]):
@@ -228,4 +233,4 @@ test_args = Arg(["/home/jeremie/PycharmProjects/untitled/fichiertest.txt"],
 
 if __name__ == '__main__':
     print(test(tr_args))
-    #train(tr_args)
+    
